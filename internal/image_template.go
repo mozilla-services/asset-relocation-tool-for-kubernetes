@@ -14,9 +14,9 @@ import (
 
 var (
 	TemplateRegex    = regexp.MustCompile(`{{\s*(.*?)\s*}}`)
-	TagRegex         = regexp.MustCompile(`:{{\s*(.*?)\s*}}`)
-	DigestRegex      = regexp.MustCompile(`@{{\s*(.*?)\s*}}`)
-	TagOrDigestRegex = regexp.MustCompile(`[:|@]{{.*?}}`)
+	TagRegex         = regexp.MustCompile(`:(.*)`)
+	DigestRegex      = regexp.MustCompile(`@(.*)`)
+	TagOrDigestRegex = regexp.MustCompile(`[:|@].*`)
 )
 
 type ImageTemplate struct {
