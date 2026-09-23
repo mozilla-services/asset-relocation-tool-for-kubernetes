@@ -1,0 +1,5 @@
+greeting: hello from exporter
+
+# Imported by the parent chart as .Values.imported
+shared:
+  answer: 42

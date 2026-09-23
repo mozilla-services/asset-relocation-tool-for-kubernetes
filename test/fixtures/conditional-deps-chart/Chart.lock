@@ -1,0 +1,15 @@
+dependencies:
+- name: disabled-by-condition
+  repository: https://example.com/charts
+  version: 0.1.0
+- name: disabled-by-tag
+  repository: https://example.com/charts
+  version: 0.1.0
+- name: aliased
+  repository: https://example.com/charts
+  version: 0.1.0
+- name: exporter
+  repository: https://example.com/charts
+  version: 0.1.0
+digest: sha256:0fc4b6b5b2d6a27c0e9ba0b0b2e5e3a6f6bb1e0bd3a6f2a5c8f0ba1e4d7c9e2f
+generated: "2022-02-17T16:27:12.34928543+01:00"

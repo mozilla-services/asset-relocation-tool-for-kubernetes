@@ -1,0 +1,11 @@
+# Default values for conditional-deps-chart.
+
+disabled-by-condition:
+  enabled: false
+
+tags:
+  optional-features: false
+
+# Applies to the aliased subchart through its alias
+renamed:
+  greeting: hello from the alias
