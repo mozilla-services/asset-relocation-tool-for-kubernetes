@@ -739,7 +739,34 @@ func TestGroupChangesByChart(t *testing.T) {
 	}
 }
 
-// Check that a relocated Helm Chart does not contain information about their dependencies
+// Strips the dependency refs off a fixture chart and repackages it the same way `modifyChart` does,
+// returning the chart as Helm would load it back from the relocated archive.
+func relocateChart(t *testing.T, fixture string) *chart.Chart {
+	t.Helper()
+
+	testChart, err := loader.Load(filepath.Join(fixturesRoot, fixture))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := stripDependencyRefs(testChart); err != nil {
+		t.Fatal(err)
+	}
+
+	filename, err := chartutil.Save(testChart, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	modifiedChart, err := loader.Load(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return modifiedChart
+}
+
+// Check that a relocated Helm chart can't re-fetch its dependencies
 func TestStripDependencyRefs(t *testing.T) {
 	testChart, err := loader.Load(filepath.Join(fixturesRoot, "3-levels-chart"))
 	if err != nil {
@@ -767,39 +794,70 @@ func TestStripDependencyRefs(t *testing.T) {
 		t.Error("Chart.lock file expected ")
 	}
 
-	// Strip dependencies and re-package chart
-	if err := stripDependencyRefs(testChart); err != nil {
-		t.Fatal(err)
-	}
-
-	tmpDir, err := os.MkdirTemp("", "external-tests-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Repackage chart
-	filename, err := chartutil.Save(testChart, tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Load from re-packaged version
-	modifiedChart, err := loader.Load(filename)
-	if err != nil {
-		t.Fatal(err)
-	}
+	modifiedChart := relocateChart(t, "3-levels-chart")
 
 	firstLevelDeps = modifiedChart.Dependencies()
 	sortCharts(firstLevelDeps)
 
 	for _, c := range []*chart.Chart{modifiedChart, firstLevelDeps[0]} {
-		if got := len(c.Metadata.Dependencies); got != 0 {
-			t.Errorf("expected no dependencies got=%d", got)
+		for _, dep := range c.Metadata.Dependencies {
+			if dep.Repository != "" {
+				t.Errorf("chart %s dependency %s still refers to repository %q",
+					c.Name(), dep.Name, dep.Repository)
+			}
 		}
 
 		if c.Lock != nil {
 			t.Error("Chart.lock file unexpected ")
 		}
+	}
+}
+
+// Check that relocating a chart doesn't change which subcharts Helm renders, nor the values it
+// renders them with.  Helm takes all of that from the Chart.yaml dependency entries, so stripping
+// them would silently enable every vendored subchart.
+// See https://github.com/vmware-tanzu/asset-relocation-tool-for-kubernetes/issues/142
+func TestStripDependencyRefsKeepsDependencyResolution(t *testing.T) {
+	resolveSubcharts := func(c *chart.Chart) ([]string, chartutil.Values) {
+		t.Helper()
+
+		if err := chartutil.ProcessDependencies(c, chartutil.Values{}); err != nil {
+			t.Fatal(err)
+		}
+
+		names := []string{}
+		for _, dep := range c.Dependencies() {
+			names = append(names, dep.Name())
+		}
+		sort.Strings(names)
+
+		return names, c.Values
+	}
+
+	originalChart, err := loader.Load(filepath.Join(fixturesRoot, "conditional-deps-chart"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantNames, wantValues := resolveSubcharts(originalChart)
+
+	// Guard the fixture itself: if it stops exercising the condition, tag, and alias,
+	// then the comparison below would pass for the wrong reason
+	if want := []string{"exporter", "renamed"}; !reflect.DeepEqual(wantNames, want) {
+		t.Fatalf("fixture no longer exercises dependency resolution, got=%v, want=%v", wantNames, want)
+	}
+	if _, err := wantValues.PathValue("imported.answer"); err != nil {
+		t.Fatalf("fixture no longer exercises import-values: %v", err)
+	}
+
+	gotNames, gotValues := resolveSubcharts(relocateChart(t, "conditional-deps-chart"))
+
+	if !reflect.DeepEqual(gotNames, wantNames) {
+		t.Errorf("relocation changed the rendered subcharts, got=%v, want=%v", gotNames, wantNames)
+	}
+
+	if !reflect.DeepEqual(gotValues, wantValues) {
+		t.Errorf("relocation changed the rendered values, got=%v, want=%v", gotValues, wantValues)
 	}
 }
 

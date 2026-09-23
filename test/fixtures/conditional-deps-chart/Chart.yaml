@@ -1,0 +1,30 @@
+apiVersion: v2
+name: conditional-deps-chart
+description: A chart exercising the dependency fields helm resolves from Chart.yaml metadata
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+dependencies:
+  # Disabled through values by the condition below
+  - name: disabled-by-condition
+    version: 0.1.0
+    repository: https://example.com/charts
+    condition: disabled-by-condition.enabled
+  # Disabled through the tags table in values
+  - name: disabled-by-tag
+    version: 0.1.0
+    repository: https://example.com/charts
+    tags:
+      - optional-features
+  # Rendered under its alias, not its real name
+  - name: aliased
+    version: 0.1.0
+    repository: https://example.com/charts
+    alias: renamed
+  # Exports a values table up into the parent
+  - name: exporter
+    version: 0.1.0
+    repository: https://example.com/charts
+    import-values:
+      - child: shared
+        parent: imported
