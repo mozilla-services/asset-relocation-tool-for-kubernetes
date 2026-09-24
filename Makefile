@@ -10,8 +10,8 @@ default: build
 .PHONY: deps-go-binary deps-counterfeiter deps-ginkgo deps-golangci-lint
 
 GO_VERSION := $(shell go version)
-PREFERRED_VERSION=1.18
-PREVIOUS_VERSION=1.17
+PREFERRED_VERSION=1.23
+PREVIOUS_VERSION=1.22
 VERSION_MATCHED := $(shell go version | grep "$(PREFERRED_VERSION)\|$(PREVIOUS_VERSION)")
 
 deps-go-binary:
@@ -31,17 +31,17 @@ HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
 # to the go.mod file. To avoid that we import from another directory
 deps-counterfeiter: deps-go-binary
 ifndef HAS_COUNTERFEITER
-	cd /; go get -u github.com/maxbrunsfeld/counterfeiter/v6
+	go install github.com/maxbrunsfeld/counterfeiter/v6
 endif
 
 deps-ginkgo: deps-go-binary
 ifndef HAS_GINKGO
-	cd /; go get github.com/onsi/ginkgo/ginkgo github.com/onsi/gomega
+	go install github.com/onsi/ginkgo/v2/ginkgo github.com/onsi/gomega
 endif
 
 deps-golangci-lint: deps-go-binary
 ifndef HAS_GOLANGCI_LINT
-	cd /; go get github.com/golangci/golangci-lint/cmd/golangci-lint
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint
 endif
 
 # #### CLEAN ####
